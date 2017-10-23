@@ -86,12 +86,8 @@ def group_students(student_ids,scores):
                         cached_group_scores[group_b]
         student_1 = random.sample(group_a,1) 
         student_2 = random.sample(group_b,1)
-
         new_group_a = group_a.difference(student_1).union(student_2)
-        #new_group_a = new_group_a.union(student_2)
-
         new_group_b = group_b.difference(student_2).union(student_1)
-        #new_group_b = new_group_b.union(student_1)
 
         new_score = 0.
         for new_group in (new_group_a, new_group_b):
@@ -116,6 +112,7 @@ def group_students(student_ids,scores):
             total_score -= old_score
             total_score += new_score
             if total_score > best_score: 
+                # Print some progress about how the score is improving
                 print '\x1b[2K\r',
                 print "Best score: {0}\r".format(int(total_score)),
                 iterations_since_last_improvement = 0
