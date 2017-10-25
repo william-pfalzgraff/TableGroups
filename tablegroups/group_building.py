@@ -124,25 +124,3 @@ def group_students(student_ids,scores):
     # Optinally shuffle the order of groups before returning
     best_groups = random.sample(best_groups,len(best_groups))
     return best_groups
-
-def main():
-    random.seed(230814)
-    # Generate some fake student data
-    ids = []
-    scores = {}
-    for j in range(100):
-        my_id = random.randint(50000000,60000000)
-        ids.append(my_id)
-        scores[my_id] = int(np.floor(random.gauss(70.,12.)))
-
-    best_groups = group_students(ids,scores)
-
-    for group in best_groups:
-        scores_in_group = []
-        for student in group:
-            scores_in_group.append(scores[student])
-        print(scores_in_group)
-
-
-if __name__ == "__main__":
-    main()
