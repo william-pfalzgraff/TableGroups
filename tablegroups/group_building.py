@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 import random
+from itertools import zip_longest
 
 # Desired max difference in score between members of a group.
 DESIRED_MAX = 20.
@@ -24,56 +25,100 @@ MAX_WAIT = 15000
 # improving them.  Empiricaly, BETA = 4.5 works pretty well.
 BETA = 4.5
 
-def scoring_function(max_difference, min_difference, mean_score):
+class Student:
+    _score = None
+    _ID = None
+
+    def __init__(self, ID, score):
+        self._ID = ID
+        self._score = score
+
+    def ID(self):
+        return self._ID
+
+    def score(self):
+        return self._score
+
+    def __repr__(self):
+        return 'Student(ID={}, score={})'.format(self._ID, self._score)
+
+class Group:
+    _members = None
+
+    def __init__(self, members):
+        self._members = [m for m in members if m is not None]
+
+    def __len__(self):
+        return len(self._members)
+
+    def __repr__(self):
+        return 'Group(size={})'.format(len(self))
+
+    def scores(self):
+        return np.array([st.score() for st in self._members])
+
+    def max_difference(self):
+        return np.max(self.scores()) - np.min(self.scores())
+
+    def min_difference(self):
+        return np.min(np.diff(np.sort(self.scores())))
+
+    def mean(self):
+        return np.mean(self.scores())
+
+
+
+
+def cost(group):
+    if len(group)<=2:
+        return float('inf')
     score = 0.
-    if max_difference > DESIRED_MAX:
-        score += DESIRED_MAX - max_difference
-    if min_difference < DESIRED_MIN:
-        score += 8*(min_difference - DESIRED_MIN)
-    if mean_score <= DESIRED_MINIMUM_TABLE_MEAN:
-        score += -6*(abs(mean_score - DESIRED_MINIMUM_TABLE_MEAN))
+    if group.max_difference() > DESIRED_MAX:
+        score += DESIRED_MAX - group.max_difference()
+    if group.min_difference() < DESIRED_MIN:
+        score += 8*(group.min_difference() - DESIRED_MIN)
+    if group.mean() <= DESIRED_MINIMUM_TABLE_MEAN:
+        score += -6*(abs(group.mean() - DESIRED_MINIMUM_TABLE_MEAN))
     return score
 
-def score_group(group,scores):
-    group_scores = []
-    for student in group:
-        group_scores.append(scores[student])
-    group_scores = np.array(group_scores)
-    max_difference = np.max(group_scores) - np.min(group_scores)
-    # TODO: This will fail if the group size is 1.
-    min_difference = np.min(np.diff(np.sort(group_scores)))
-    mean_score = np.mean(group_scores)
-    return scoring_function(max_difference, min_difference, mean_score)
 
+def build_groups(students, group_size=25):
+    random.shuffle(students)
+    # Magic incantation based on https://docs.python.org/3.6/library/itertools.html
+    # Grouper function. It isn't pretty, but it splits the students simply and in the
+    # Correct orientation. Inserts None to even up the group size
+    groups =  list(zip(*zip_longest(*[iter(students)]*group_size, fillvalue=None)))
 
-def build_groups(ids,scores,group_size=4):
-    groups = set()
-    group_index = 0
-    num_groups = int(np.ceil(float(len(ids)) / group_size))
-    group_score = 0.
-    cached_group_scores = {}
-    for j in range(num_groups):
-        start_index = group_size*group_index
-        end_index = start_index + 4
-        if (end_index > (len(ids) - 1)):
-            end_index = len(ids) - 1
-        group = frozenset(ids[start_index:end_index])
-        if start_index == end_index:
-            print("WARNING: student in a group alone.")
-            print([ids[start_index]])
-            group = frozenset([ids[start_index]])
-        assert len(group) != 0
-        group_index +=1
-        groups.add(group)
-        score_for_group = score_group(group,scores)
-        cached_group_scores[group] = score_for_group
-        group_score += score_for_group
+    groups = tuple([Group(students) for students in groups])
+
+    print(groups)
+
+    cached_group_scores = [cost(group) for group in groups]
+    group_score = sum(cached_group_scores)
     return groups, group_score, cached_group_scores
+    #
+    # for j in range(num_groups):
+    #     start_index = group_size*group_index
+    #     end_index = start_index + 4
+    #     if (end_index > (len(ids) - 1)):
+    #         end_index = len(ids) - 1
+    #     group = frozenset(ids[start_index:end_index])
+    #     if start_index == end_index:
+    #         print("WARNING: student in a group alone.")
+    #         print([ids[start_index]])
+    #         group = frozenset([ids[start_index]])
+    #     assert len(group) != 0
+    #     group_index +=1
+    #     groups.add(group)
+    #     score_for_group = score_group(group,scores)
+    #     cached_group_scores[group] = score_for_group
+    #     group_score += score_for_group
+    # return groups, group_score, cached_group_scores
 
-def group_students(student_ids,scores):
-    ids = student_ids[:]
-    random.shuffle(ids)
-    groups, group_score, cached_group_scores = build_groups(ids,scores)
+def optimize(ids, scores):
+    students = [Student(idx, score) for idx, score in scores.items()]
+    groups, group_score, cached_group_scores = build_groups(students)
+
     best_score = group_score
     best_groups = groups
     total_score = group_score

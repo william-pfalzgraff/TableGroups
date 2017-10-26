@@ -1,5 +1,5 @@
 import unittest
-from .group_building import group_students
+from .group_building import optimize
 import random
 import numpy as np
 
@@ -12,13 +12,13 @@ class Testgroup(unittest.TestCase):
         self.ids = []
         self.scores = {}
         # Generate some fake student data
-        for _ in range(100):
+        for _ in range(101):
             my_id = random.randint(50000000,60000000)
             self.ids.append(my_id)
             self.scores[my_id] = int(np.floor(random.gauss(70.,12.)))
 
     def test_group_students(self):
-        best_groups = group_students(self.ids, self.scores)
+        best_groups = optimize(self.ids, self.scores)
 
         for group in best_groups:
             scores_in_group = []
