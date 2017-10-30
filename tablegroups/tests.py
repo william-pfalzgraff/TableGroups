@@ -1,8 +1,8 @@
 import unittest
 import string
 # from .group_building import optimize
-from .Student import Student
-from .Classroom import Classroom
+from .Classroom import Classroom, Student
+from .BaseCost import BasicCost
 import random
 import numpy as np
 
@@ -50,6 +50,26 @@ class TestClassroom(unittest.TestCase):
         c = Classroom(self.students)
         print(c)
 
+    def test_random_trade(self):
+        c = Classroom(self.students)
+        print(c.random_trade())
+
+
+    def test_optimize(self):
+        c = Classroom(self.students)
+        c.optimize()
+
+
+class TestCost(unittest.TestCase):
+
+    def setUp(self):
+        self.group = frozenset([Student(ID=ID,
+                                 score=int(np.floor(random.gauss(70.,12.))))
+                         for ID in 'ABCDEFGH'])
+
+    def testBasicCost(self):
+        b = BasicCost()
+        print(b.cost(self.group))
 
 
 if __name__ == '__main__':

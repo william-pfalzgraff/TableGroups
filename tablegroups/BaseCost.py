@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class BaseCost:
 
     _cache = None
@@ -14,7 +17,7 @@ class BaseCost:
         raise NotImplementedError
 
 
-class BasicCost:
+class BasicCost(BaseCost):
 
     # Desired max difference in score between members of a group.
     DESIRED_MAX = 20.
@@ -24,46 +27,28 @@ class BasicCost:
     # is below this:
     DESIRED_MINIMUM_TABLE_MEAN = 60.
 
+    def scores(self, group):
+        return np.array([st.score for st in group])
+
+    def max_difference(self, group):
+        return (np.max(self.scores(group)) -
+                np.min(self.scores(group))
+                )
+
+    def min_difference(self, group):
+        return np.min(np.diff(np.sort(self.scores(group))))
+
+    def mean(self, group):
+        return np.mean(self.scores(group))
+
     def _cost(self, group):
-        pass
-
-    def scores(self):
-        return np.array([st.score for st in self])
-
-    def max_difference(self):
-        return np.max(self.scores()) - np.min(self.scores())
-
-    def min_difference(self):
-        return np.min(np.diff(np.sort(self.scores())))
-
-    def mean(self):
-        return np.mean(self.scores())
-
-    def pop(self):
-        pass
-
-    def add(self):
-        pass
-
-    def replace(self, old_member, new_member):
-        self.add(new_member)
-        return self.pop(old_member)
-
-    def cost(self):
-        if repr(self) not in self._cache:
-            # TODO: unpack
-            cost = 0
-            self._cache[repr(self)] = cost
-        return self._cache[repr(self)]
-
-    def _cost_2(self, group):
         if len(group)<=2:
             return float('inf')
         score = 0.
-        if group.max_difference() > DESIRED_MAX:
-            score += DESIRED_MAX - group.max_difference()
-        if group.min_difference() < DESIRED_MIN:
-            score += 8*(group.min_difference() - DESIRED_MIN)
-        if group.mean() <= DESIRED_MINIMUM_TABLE_MEAN:
-            score += -6*(abs(group.mean() - DESIRED_MINIMUM_TABLE_MEAN))
+        if self.max_difference(group) > self.DESIRED_MAX:
+            score += self.DESIRED_MAX - self.max_difference(group)
+        if self.min_difference(group) < self.DESIRED_MIN:
+            score += 8*(self.min_difference(group) - self.DESIRED_MIN)
+        if self.mean(group) <= self.DESIRED_MINIMUM_TABLE_MEAN:
+            score += -6*(abs(self.mean(group) - self.DESIRED_MINIMUM_TABLE_MEAN))
         return score
