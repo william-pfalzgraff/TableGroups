@@ -1,70 +1,10 @@
 from __future__ import print_function
+from .Student import Student
+from .Group import Group
 
 import numpy as np
 import random
 from itertools import zip_longest
-
-# Desired max difference in score between members of a group.
-DESIRED_MAX = 20.
-# Desired min difference in score between members of a group.
-DESIRED_MIN = 3.
-# Impose an additional penalty if the average score of the table
-# is below this:
-DESIRED_MINIMUM_TABLE_MEAN = 60.
-# Maximum number of Monte Carlo iterations
-MAX_ITERATIONS = 300000
-# Accept the current seats if you can't improve the score after
-# this many MC iterations
-MAX_WAIT = 15000
-# Determines the acceptance probability for Metropolis Monte Carlo.
-# Smaller values of BETA mean only moves that actually improve the score
-# will be accepted but the algorithm might fall into a local minimum
-# that it can't get out of. Larger values of BETA make the algorithm
-# more likely to find the global minimum, but too large a value of
-# BETA basically means you are just shuffling the tables without
-# improving them.  Empiricaly, BETA = 4.5 works pretty well.
-BETA = 4.5
-
-class Student:
-    _score = None
-    _ID = None
-
-    def __init__(self, ID, score):
-        self._ID = ID
-        self._score = score
-
-    def ID(self):
-        return self._ID
-
-    def score(self):
-        return self._score
-
-    def __repr__(self):
-        return 'Student(ID={}, score={})'.format(self._ID, self._score)
-
-class Group:
-    _members = None
-
-    def __init__(self, members):
-        self._members = [m for m in members if m is not None]
-
-    def __len__(self):
-        return len(self._members)
-
-    def __repr__(self):
-        return 'Group(size={})'.format(len(self))
-
-    def scores(self):
-        return np.array([st.score() for st in self._members])
-
-    def max_difference(self):
-        return np.max(self.scores()) - np.min(self.scores())
-
-    def min_difference(self):
-        return np.min(np.diff(np.sort(self.scores())))
-
-    def mean(self):
-        return np.mean(self.scores())
 
 
 
@@ -82,19 +22,18 @@ def cost(group):
     return score
 
 
-def build_groups(students, group_size=25):
+def build_groups(students, group_size=4):
     random.shuffle(students)
     # Magic incantation based on https://docs.python.org/3.6/library/itertools.html
     # Grouper function. It isn't pretty, but it splits the students simply and in the
     # Correct orientation. Inserts None to even up the group size
-    groups =  list(zip(*zip_longest(*[iter(students)]*group_size, fillvalue=None)))
-
-    groups = tuple([Group(students) for students in groups])
+    groups =  list(zip(*zip_longest(*[iter(students)]*(len(students)//group_size), fillvalue=None)))
+    groups = tuple([frozenset(students) for students in groups])
 
     print(groups)
 
-    cached_group_scores = [cost(group) for group in groups]
-    group_score = sum(cached_group_scores)
+    cached_group_scores = {group: cost(group) for group in groups}
+    group_score = sum(cached_group_scores.values())
     return groups, group_score, cached_group_scores
     #
     # for j in range(num_groups):
@@ -123,6 +62,8 @@ def optimize(ids, scores):
     best_groups = groups
     total_score = group_score
 
+    print(groups)
+
     iteration = 1
     iterations_since_last_improvement = 0.
     while iteration < MAX_ITERATIONS:
@@ -141,7 +82,7 @@ def optimize(ids, scores):
             if new_group in cached_group_scores:
                 new_score += cached_group_scores[new_group]
             else:
-                score_for_group = score_group(new_group,scores)
+                score_for_group = cost(new_group,scores)
                 new_score += score_for_group
                 cached_group_scores[new_group] = score_for_group
 
