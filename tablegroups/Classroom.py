@@ -1,8 +1,10 @@
-from collections import namedtuple
+from .Cost import BasicCost
+
 import random
-from itertools import zip_longest
 import numpy as np
-from .BaseCost import BasicCost
+from itertools import zip_longest
+from click import progressbar
+from collections import namedtuple
 
 Student = namedtuple('Student', ['ID', 'score'])
 Trade = namedtuple('Trade', ['group_a', 'student_a', 'new_group_a',
@@ -16,11 +18,12 @@ class Classroom:
     best_score = 0
     groups = None
     best_groups = None
+
+    # TODO: Provide a full history
     history = None
 
     # Maximum number of Monte Carlo iterations
-    MAX_ITERATIONS = 300000
-    # MAX_ITERATIONS = 300
+    MAX_ITERATIONS = 100000
     # Accept the current seats if you can't improve the score after
     # this many MC iterations
     MAX_WAIT = 15000
@@ -33,13 +36,15 @@ class Classroom:
     # improving them.  Empiricaly, BETA = 4.5 works pretty well.
     BETA = 4.5
 
-    def __init__(self, students, group_size=4, cost_function=None):
+    def __init__(self, students, group_size=4, beta=4.5, cost_calculator=BasicCost):
         self._group_size = group_size
-        self._make_groups(students)
-        self.best_groups = self.groups
-        self._coster = BasicCost()
+        self.BETA = beta
 
-        # self._score = sum([g.score() for g in self])
+        # Initialize a cost calculation object. Necessary for the cache
+        self._cost_calculator = cost_calculator()
+
+        self._make_groups(students)
+        self.score = self.best_score = self.cost()
 
     def __repr__(self):
         return 'Classroom(\n{}\n)'.format('\n'.join([str(g) for g in self.groups]))
@@ -53,15 +58,15 @@ class Classroom:
         # Remove Nones
         groups = [[s for s in group if s is not None] for group in groups]
         # Convert to a set of frozensets
-        self.groups = set([frozenset(students) for students in groups])
+        self.best_groups = self.groups = set([frozenset(students) for students in groups])
 
     def __iter__(self):
-        yield from self._groups
+        yield from self.groups
 
     def cost(self, group=None):
         if group is None:
             return sum(self.cost(g) for g in self.groups)
-        return self._coster.cost(group)
+        return self._cost_calculator.cost(group)
 
     def random_trade(self):
         group_a, group_b = random.sample(self.groups,2)
@@ -82,8 +87,9 @@ class Classroom:
         return trade
 
     def iter_trade(self):
-        while True:
+        for _ in range(self.MAX_ITERATIONS):
             yield self.random_trade()
+        print('Reached maximum iteration number.')
 
     def apply_trade(self, trade):
         self.groups.remove(trade.group_a)
@@ -96,31 +102,30 @@ class Classroom:
 
         iterations_since_last_improvement = 0
 
-        for iteration, trade in enumerate(self.iter_trade()):
+        with progressbar(enumerate(self.iter_trade()),
+                         length=self.MAX_ITERATIONS,
+                         label='Maximum {} iterations:'.format(self.MAX_ITERATIONS)) \
+                         as bar:
+            for iteration, trade in bar:
 
-            if trade.cost < 0:
-                accept_probability = 1
-            else:
-                accept_probability = np.exp(self.BETA*(trade.cost))
+                if trade.cost < 0:
+                    accept_probability = 1
+                else:
+                    accept_probability = np.exp(self.BETA*(trade.cost))
 
-            if (random.random() < accept_probability):
-                # print('trading {} for {}. Improving by {}'.format(trade.student_a, trade.student_b, trade.cost))
-                self.apply_trade(trade)
-                if self.score < self.best_score:
-                    # Print some progress about how the score is improving
-                    print("Best score: {0}\r".format(int(self.best_score)))
-                    iterations_since_last_improvement = 0
-                    self.best_score = self.score
-                    self.best_groups = self.groups
-            iterations_since_last_improvement += 1
+                if (random.random() < accept_probability):
+                    self.apply_trade(trade)
+                    if self.score < self.best_score:
+                        # Print some progress about how the score is improving
+                        # print("Best score: {0}\r".format(int(self.best_score)))
+                        iterations_since_last_improvement = 0
+                        self.best_score = self.score
+                        self.best_groups = frozenset(self.groups)
+                iterations_since_last_improvement += 1
 
-            if iteration >= self.MAX_ITERATIONS:
-                print('Reached maximum iteration number.')
-                break
-            elif iterations_since_last_improvement > self.MAX_WAIT:
-                print('Reached maximum iterations without improvement.')
-                break
+                if iterations_since_last_improvement > self.MAX_WAIT:
+                    print('\nReached maximum {} iterations without improvement.'.format(self.MAX_WAIT))
+                    break
 
         # Optinally shuffle the order of groups before returning
-        self.best_groups = random.sample(self.best_groups, len(self.best_groups))
-        return self.best_groups
+        self.best_groups = self.groups = random.sample(self.best_groups, len(self.best_groups))

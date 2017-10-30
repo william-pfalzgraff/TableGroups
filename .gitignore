@@ -58,3 +58,6 @@ target/
 
 # Locks
 .~*
+
+# Profiling
+profile*.out
