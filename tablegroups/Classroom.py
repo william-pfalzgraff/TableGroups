@@ -129,6 +129,8 @@ class Classroom:
                         iterations_since_last_improvement = 0
                         self.best_score = self.score
                         self.best_groups = frozenset(self.groups)
+                    iterations_since_last_improvement = 0
+                else:
                     iterations_since_last_improvement += 1
 
                 if iterations_since_last_improvement > self.MAX_WAIT:
