@@ -2,9 +2,14 @@ from .Cost import BasicCost
 
 import random
 import numpy as np
-from itertools import zip_longest
 from click import progressbar
 from collections import namedtuple
+# This is to support python2.
+try:
+    from itertools import zip_longest as zip_longest
+except:
+    from itertools import izip_longest as zip_longest
+
 
 Student = namedtuple('Student', ['ID', 'score'])
 Trade = namedtuple('Trade', ['group_a', 'student_a', 'new_group_a',
@@ -61,7 +66,10 @@ class Classroom:
         self.best_groups = self.groups = set([frozenset(students) for students in groups])
 
     def __iter__(self):
-        yield from self.groups
+        # TODO: this requries python 3.
+        #yield from self.groups
+        for group in self.groups:
+            yield group
 
     def cost(self, group=None):
         if group is None:
@@ -121,7 +129,7 @@ class Classroom:
                         iterations_since_last_improvement = 0
                         self.best_score = self.score
                         self.best_groups = frozenset(self.groups)
-                iterations_since_last_improvement += 1
+                    iterations_since_last_improvement += 1
 
                 if iterations_since_last_improvement > self.MAX_WAIT:
                     print('\nReached maximum {} iterations without improvement.'.format(self.MAX_WAIT))

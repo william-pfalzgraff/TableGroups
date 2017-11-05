@@ -80,6 +80,6 @@ class BasicCost(BaseCost):
             score += self._threshold['max_difference'] - max_difference
         if min_difference < self._threshold['min_difference']:
             score += 8*(min_difference - self._threshold['min_difference'])
-        if mean <= self._threshold['mean']:
+        if mean < self._threshold['mean']:
             score += 6*(self._threshold['mean'] - mean)
         return score
