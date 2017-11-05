@@ -81,6 +81,5 @@ class BasicCost(BaseCost):
         if min_difference < self._threshold['min_difference']:
             score += 8*(min_difference - self._threshold['min_difference'])
         if mean <= self._threshold['mean']:
-            # TODO: This formula seems wrong. Is this correct?
-            score += -6*(abs(mean - self._threshold['mean']))
+            score += 6*(self._threshold['mean'] - mean)
         return score
